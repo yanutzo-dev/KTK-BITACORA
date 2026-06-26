@@ -51,6 +51,10 @@ body{background:var(--crema);color:var(--carbon);font-family:'Calibri','Segoe UI
 .raw-input:focus{outline:none;border-color:var(--terra);box-shadow:0 0 0 2px var(--terra-p)}
 .input-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px}
 .char-hint{font-size:12px;color:var(--muted)}
+.btn-mic{background:var(--white);border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:18px;width:38px;height:38px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.btn-mic:hover{border-color:var(--terra);color:var(--terra)}
+.btn-mic.recording{background:#fceaea;border-color:#c93b3b;color:#c93b3b;animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,59,59,.3)}50%{box-shadow:0 0 0 6px rgba(201,59,59,0)}}
 
 /* Preview – múltiples sub-entradas */
 .preview-wrap{background:#f0f4ff;border:1px solid #c5d3f0;border-radius:6px;padding:1.25rem;margin-bottom:1.5rem;display:none}
@@ -330,7 +334,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto extra, sin backticks:
       "proyecto": "nombre del proyecto",
       "tipo": "avance|problema|acuerdo|pendiente",
       "responsable": "nombre del PM responsable o Juan si no se especifica",
-      "nota": "texto limpio, redacción mínima, conserva el tono y longitud original",
+      "nota": "texto limpio en español de negocios. Entre 1 y 4 oraciones según qué tan complejo sea el tema. Conserva todos los datos clave: nombres, materiales, fechas, montos. Si el original es muy corto puedes expandir ligeramente para que sea claro, pero no agregues información que no está. Sin jerga informal.",
       "personas": ["Nombre1","Nombre2"]
     }
   ],
@@ -746,6 +750,59 @@ function importData(e){
     }catch{toast('Archivo inválido.');}
   };
   reader.readAsText(file);e.target.value='';
+}
+
+// ── Voz ──
+let recognition=null;
+let isRecording=false;
+function toggleVoz(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    toast('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.');return;
+  }
+  if(isRecording){stopVoz();return;}
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SpeechRecognition();
+  recognition.lang='es-MX';
+  recognition.continuous=true;
+  recognition.interimResults=true;
+  recognition.maxAlternatives=1;
+  const btn=document.getElementById('btn-mic');
+  const textarea=document.getElementById('raw-input');
+  let baseText=textarea.value;
+  if(baseText&&!baseText.endsWith(' '))baseText+=' ';
+  recognition.onstart=()=>{
+    isRecording=true;
+    btn.classList.add('recording');
+    btn.title='Grabando... clic para detener';
+    toast('Grabando — habla tu nota...');
+  };
+  recognition.onresult=(e)=>{
+    let interim='';
+    let final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    if(final)baseText+=final+' ';
+    textarea.value=baseText+interim;
+  };
+  recognition.onerror=(e)=>{
+    if(e.error==='no-speech')return;
+    toast('Error de micrófono: '+e.error);
+    stopVoz();
+  };
+  recognition.onend=()=>{
+    if(isRecording)recognition.start(); // keep going until user stops
+  };
+  recognition.start();
+}
+function stopVoz(){
+  isRecording=false;
+  if(recognition){recognition.onend=null;recognition.stop();recognition=null;}
+  const btn=document.getElementById('btn-mic');
+  btn.classList.remove('recording');
+  btn.title='Grabar nota de voz';
+  toast('Listo — revisa el texto y procesa con IA.');
 }
 
 let toastTimer;
