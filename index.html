@@ -189,6 +189,16 @@ body{background:var(--crema);color:var(--carbon);font-family:'Calibri','Segoe UI
   <div class="header-actions">
     <button class="btn" onclick="exportData()">&#8595; Exportar</button>
     <label class="btn" style="cursor:pointer">&#8593; Importar<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+    <button class="btn" id="btn-apikey" onclick="toggleApiKey()" title="Configurar API Key">&#9881;</button>
+  </div>
+  <div id="apikey-panel" style="display:none;background:#f0f4ff;border:1px solid #c5d3f0;border-radius:6px;padding:1rem;margin-top:1rem">
+    <div style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#3050a0;margin-bottom:8px">API Key de Anthropic</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="password" id="apikey-input" placeholder="sk-ant-api03-..." style="flex:1;font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid #c5d3f0;border-radius:4px;background:#fff;color:#2E2A25" value="">
+      <button class="btn btn-primary" onclick="saveApiKey()">Guardar</button>
+      <button class="btn" onclick="toggleApiKey()">Cerrar</button>
+    </div>
+    <div style="font-size:11px;color:#8a8278;margin-top:6px">Se guarda solo en tu navegador, nunca en el código.</div>
   </div>
 </header>
 
@@ -302,6 +312,7 @@ function switchTab(name,btn){
 async function procesarNota(){
   const raw=document.getElementById('raw-input').value.trim();
   if(!raw){toast('Escribe algo primero.');return;}
+  if(!checkApiKey())return;
   const btn=document.getElementById('btn-procesar');
   btn.innerHTML='<span class="spinner"></span> Procesando\u2026';
   btn.disabled=true;
@@ -352,7 +363,7 @@ tareas = solo si hay una acción específica pendiente mencionada explícitament
 
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      method:'POST',headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:prompt}],system:"Responde SIEMPRE con JSON válido. En los valores de texto: escapa las comillas dobles como \\\", nunca uses saltos de línea dentro de strings JSON, no uses caracteres de control."})
     });
     const data=await res.json();
@@ -784,39 +795,4 @@ function toggleVoz(){
       else interim+=e.results[i][0].transcript;
     }
     if(final)baseText+=final+' ';
-    textarea.value=baseText+interim;
-  };
-  recognition.onerror=(e)=>{
-    if(e.error==='no-speech')return;
-    toast('Error de micrófono: '+e.error);
-    stopVoz();
-  };
-  recognition.onend=()=>{
-    if(isRecording)recognition.start(); // keep going until user stops
-  };
-  recognition.start();
-}
-function stopVoz(){
-  isRecording=false;
-  if(recognition){recognition.onend=null;recognition.stop();recognition=null;}
-  const btn=document.getElementById('btn-mic');
-  btn.classList.remove('recording');
-  btn.title='Grabar nota de voz';
-  toast('Listo — revisa el texto y procesa con IA.');
-}
-
-let toastTimer;
-function toast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
-}
-
-syncFilterOptions();
-initProjectColors();
-render();
-updateBadge();
-</script>
-</body>
-</html>
+    textarea.value=baseText
