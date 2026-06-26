@@ -374,18 +374,26 @@ tareas = solo si hay una acción específica pendiente mencionada explícitament
     const text=(data.content||[]).map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
     let parsed;
     try{
+      // try direct parse
       parsed=JSON.parse(text);
     }catch(e){
-      // sanitize: remove control chars, fix common issues
-      const clean=text
-        .replace(/[\u0000-\u001F\u007F]/g,' ')
-        .replace(/,\s*([}\]])/g,'$1')
-        .replace(/([{,]\s*)(\w+)\s*:/g,'$1"$2":');
-      try{parsed=JSON.parse(clean);}catch(e2){
-        console.error('Raw response:',text);
-        toast('La IA devolvió un formato inválido. Intenta de nuevo.');
-        btn.innerHTML='&#9654; Procesar con IA';btn.disabled=false;
-        return;
+      // try extracting JSON block
+      const match=text.match(/\{[\s\S]*\}/);
+      if(match){
+        try{parsed=JSON.parse(match[0]);}catch(e2){
+          // sanitize and retry
+          const clean=match[0]
+            .replace(/[\u0000-\u001F\u007F]/g,' ')
+            .replace(/,\s*([}\]])/g,'$1');
+          try{parsed=JSON.parse(clean);}catch(e3){
+            console.error('Raw response:',text);
+            // build a basic entry from raw text as fallback
+            parsed={entradas:[{proyecto:'Sin proyecto',tipo:'pendiente',responsable:'Juan',nota:text.replace(/[{}\[\]"]/g,'').slice(0,200),personas:[]}],tareas:[]};
+          }
+        }
+      } else {
+        // no JSON found at all — use raw text as note
+        parsed={entradas:[{proyecto:'Sin proyecto',tipo:'pendiente',responsable:'Juan',nota:text.slice(0,300),personas:[]}],tareas:[]};
       }
     }
     buildPreview(parsed);
