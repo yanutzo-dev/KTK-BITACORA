@@ -352,7 +352,7 @@ tareas = solo si hay una acción específica pendiente mencionada explícitament
 
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:prompt}],system:"Responde SIEMPRE con JSON válido. En los valores de texto: escapa las comillas dobles como \\\", nunca uses saltos de línea dentro de strings JSON, no uses caracteres de control."})
     });
     const data=await res.json();
