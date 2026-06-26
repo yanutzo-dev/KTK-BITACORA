@@ -788,4 +788,79 @@ function toggleVoz(){
   recognition.onstart=()=>{
     isRecording=true;
     btn.classList.add('recording');
-    btn.title='Grabando... clic para 
+    btn.title='Grabando... clic para detener';
+    toast('Grabando — habla tu nota...');
+  };
+  recognition.onresult=(e)=>{
+    let interim='';
+    let final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    if(final)baseText+=final+' ';
+    textarea.value=baseText+interim;
+  };
+  recognition.onerror=(e)=>{
+    if(e.error==='no-speech')return;
+    toast('Error de micrófono: '+e.error);
+    stopVoz();
+  };
+  recognition.onend=()=>{
+    if(isRecording)recognition.start(); // keep going until user stops
+  };
+  recognition.start();
+}
+function stopVoz(){
+  isRecording=false;
+  if(recognition){recognition.onend=null;recognition.stop();recognition=null;}
+  const btn=document.getElementById('btn-mic');
+  btn.classList.remove('recording');
+  btn.title='Grabar nota de voz';
+  toast('Listo — revisa el texto y procesa con IA.');
+}
+
+// ── API Key ──
+function getApiKey(){
+  return localStorage.getItem('ktk_apikey')||'';
+}
+function saveApiKey(){
+  const val=document.getElementById('apikey-input').value.trim();
+  if(!val){toast('Pega tu API key primero.');return;}
+  localStorage.setItem('ktk_apikey',val);
+  document.getElementById('apikey-panel').style.display='none';
+  toast('API Key guardada.');
+}
+function toggleApiKey(){
+  const panel=document.getElementById('apikey-panel');
+  const isOpen=panel.style.display!=='none';
+  panel.style.display=isOpen?'none':'flex';
+  if(!isOpen){
+    const current=getApiKey();
+    document.getElementById('apikey-input').value=current;
+  }
+}
+function checkApiKey(){
+  if(!getApiKey()){
+    document.getElementById('apikey-panel').style.display='block';
+    toast('Primero configura tu API Key con el botón ⚙️');
+    return false;
+  }
+  return true;
+}
+
+let toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+syncFilterOptions();
+initProjectColors();
+render();
+updateBadge();
+</script>
+</body>
+</html>
